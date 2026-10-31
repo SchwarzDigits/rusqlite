@@ -1,39 +1,14 @@
-#![expect(non_snake_case, non_camel_case_types)]
+// SchwarzDigits fork of libsqlite3-sys: the bundled engine is SQLite3
+// Multiple Ciphers (sqlite3mc/PROVENANCE.txt). On wasm32-unknown-unknown the
+// bindings come from sqlite-wasm-rs, the same amalgamation compiled for
+// wasm (src/wasm.rs); every other target is upstream's crate over the
+// amalgamation build.rs compiles (src/native.rs).
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+mod wasm;
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+pub use wasm::*;
 
-// force linking to openssl
-#[cfg(feature = "bundled-sqlcipher-vendored-openssl")]
-extern crate openssl_sys;
-
-pub use self::error::*;
-
-use std::mem;
-
-mod error;
-
-#[must_use]
-pub fn SQLITE_STATIC() -> sqlite3_destructor_type {
-    None
-}
-
-#[must_use]
-pub fn SQLITE_TRANSIENT() -> sqlite3_destructor_type {
-    Some(unsafe { mem::transmute::<isize, unsafe extern "C" fn(*mut std::ffi::c_void)>(-1_isize) })
-}
-
-#[allow(dead_code, clippy::all)]
-mod bindings {
-    include!(concat!(env!("OUT_DIR"), "/bindgen.rs"));
-}
-pub use bindings::*;
-
-impl Default for sqlite3_vtab {
-    fn default() -> Self {
-        unsafe { mem::zeroed() }
-    }
-}
-
-impl Default for sqlite3_vtab_cursor {
-    fn default() -> Self {
-        unsafe { mem::zeroed() }
-    }
-}
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
+mod native;
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
+pub use native::*;

@@ -4,6 +4,12 @@ use std::path::Path;
 #[cfg(all(feature = "loadable_extension", feature = "preupdate_hook"))]
 compile_error!("feature \"loadable_extension\" and feature \"preupdate_hook\" cannot be enabled at the same time");
 
+// SchwarzDigits fork: `bundled` compiles SQLite3 Multiple Ciphers (see
+// sqlite3mc/PROVENANCE.txt); the SQLCipher features would compile a second
+// encrypting engine and are refused.
+#[cfg(any(feature = "sqlcipher", feature = "bundled-sqlcipher"))]
+compile_error!("this fork bundles SQLite3 Multiple Ciphers; the SQLCipher features are not supported");
+
 /// Tells whether we're building for Windows. This is more suitable than a plain
 /// `cfg!(windows)`, since the latter does not properly handle cross-compilation
 ///
@@ -40,6 +46,15 @@ fn copy_bindings<T: AsRef<Path>>(dir: &str, bindgen_name: &str, out_path: T) {
 }
 
 fn main() {
+    // SchwarzDigits fork: on wasm32-unknown-unknown the engine is compiled by
+    // sqlite-wasm-rs (the same amalgamation); src/wasm.rs re-exports its
+    // bindings, so there is nothing to build here.
+    if env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32")
+        && env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("unknown")
+    {
+        println!("cargo:rerun-if-changed=build.rs");
+        return;
+    }
     let out_dir = env::var("OUT_DIR").unwrap();
     let out_path = Path::new(&out_dir).join("bindgen.rs");
     if cfg!(feature = "in_gecko") {
@@ -117,11 +132,17 @@ mod build_bundled {
         {
             super::copy_bindings(lib_name, "bindgen_bundled_version", out_path);
         }
-        println!("cargo:include={}/{lib_name}", env!("CARGO_MANIFEST_DIR"));
-        println!("cargo:rerun-if-changed={lib_name}/sqlite3.c");
+        // SchwarzDigits fork: `bundled` compiles the SQLite3 Multiple Ciphers
+        // amalgamation in sqlite3mc/ (pinned by its PROVENANCE.txt) instead of
+        // vanilla SQLite. The pre-generated bindings stay upstream's
+        // (sqlite3/bindgen_bundled_version.rs): SQLite3MC's C API is a
+        // superset of SQLite's.
+        println!("cargo:include={}/sqlite3mc", env!("CARGO_MANIFEST_DIR"));
+        println!("cargo:rerun-if-changed=sqlite3mc/sqlite3mc_amalgamation.c");
+        println!("cargo:rerun-if-changed=sqlite3mc/sqlite3mc_amalgamation.h");
         println!("cargo:rerun-if-changed=sqlite3/wasm32-wasi-vfs.c");
         let mut cfg = cc::Build::new();
-        cfg.file(format!("{lib_name}/sqlite3.c"))
+        cfg.file("sqlite3mc/sqlite3mc_amalgamation.c")
             .flag("-DSQLITE_CORE")
             .flag("-DSQLITE_DEFAULT_FOREIGN_KEYS=1")
             .flag("-DSQLITE_ENABLE_API_ARMOR")
@@ -142,6 +163,13 @@ mod build_bundled {
             .flag("-DHAVE_ISNAN")
             .flag("-D_POSIX_THREAD_SAFE_FUNCTIONS") // cross compile with MinGW
             .warnings(false);
+
+        // SchwarzDigits fork: an encrypting engine keeps temporary tables and
+        // indices in memory so no plaintext spill reaches disk (upstream sets
+        // the same flag for its bundled SQLCipher path; Android gets 3 below).
+        if !super::android_target() {
+            cfg.flag("-DSQLITE_TEMP_STORE=2");
+        }
 
         if cfg!(feature = "bundled-sqlcipher") {
             cfg.flag("-DSQLITE_HAS_CODEC").flag("-DSQLITE_TEMP_STORE=2");

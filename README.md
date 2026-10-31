@@ -1,3 +1,24 @@
+# SchwarzDigits fork: rusqlite over SQLite3 Multiple Ciphers
+
+This is [rusqlite](https://github.com/rusqlite/rusqlite) with one change in
+`libsqlite3-sys`: the `bundled` feature compiles the
+[SQLite3 Multiple Ciphers](https://github.com/utelle/SQLite3MultipleCiphers)
+amalgamation in `libsqlite3-sys/sqlite3mc/` (pinned by version and SHA-256
+in its `PROVENANCE.txt`) instead of vanilla SQLite, and on
+`wasm32-unknown-unknown` the sys crate re-exports `sqlite-wasm-rs`, the same
+amalgamation compiled for wasm. The SQLCipher features are refused. Nothing
+else differs; the branch `sqlite3mc/<rusqlite line>` is rebased on upstream's
+release tags and consumed as a git dependency by its tag (upstream's
+maintainers decline to bundle SQLite forks,
+[rusqlite#1726](https://github.com/rusqlite/rusqlite/pull/1726)).
+
+Bump recipe: rebase the branch onto the next upstream release tag, re-check
+`build.rs` against upstream's `bundled` block, re-check `src/wasm.rs` against
+the symbols the new rusqlite names, replace `sqlite3mc/` per its
+`PROVENANCE.txt` for an SQLite3MC release, tag `v<rusqlite>-sqlite3mc-<mc>`.
+
+---
+
 # Rusqlite
 
 [![Latest Version](https://img.shields.io/crates/v/rusqlite.svg)](https://crates.io/crates/rusqlite)

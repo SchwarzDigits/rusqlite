@@ -4,7 +4,7 @@ version = "0.35.0"
 authors = ["The rusqlite developers"]
 edition = "2021"
 repository = "https://github.com/rusqlite/rusqlite"
-description = "Native bindings to the libsqlite3 library"
+description = "Native bindings to the libsqlite3 library (SchwarzDigits fork: bundled = SQLite3 Multiple Ciphers)"
 license = "MIT"
 links = "sqlite3"
 build = "build.rs"
@@ -40,6 +40,12 @@ wasm32-wasi-vfs = []
 
 [dependencies]
 openssl-sys = { version = "0.9.103", optional = true }
+
+# SchwarzDigits fork: on wasm32-unknown-unknown the engine is sqlite-wasm-rs
+# (the same SQLite3MC amalgamation, compiled for wasm); src/wasm.rs re-exports
+# its bindings. `bundled` is inert on this target (build.rs returns early).
+[target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dependencies]
+sqlite-wasm-rs = { version = "0.6.1", default-features = false, features = ["sqlite3mc", "wasm-bindgen"] }
 
 [build-dependencies]
 bindgen = { version = "0.72", optional = true, default-features = false, features = [
