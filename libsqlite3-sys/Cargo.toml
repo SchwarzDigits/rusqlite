@@ -45,7 +45,7 @@ openssl-sys = { version = "0.9.103", optional = true }
 # (the same SQLite3MC amalgamation, compiled for wasm); src/wasm.rs re-exports
 # its bindings. `bundled` is inert on this target (build.rs returns early).
 [target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dependencies]
-sqlite-wasm-rs = { version = "0.6.1", default-features = false, features = ["sqlite3mc", "wasm-bindgen"] }
+sqlite-wasm-rs = { version = "0.6.3", default-features = false, features = ["sqlite3mc", "wasm-bindgen"] }
 
 [build-dependencies]
 bindgen = { version = "0.72", optional = true, default-features = false, features = [
